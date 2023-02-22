@@ -1879,6 +1879,18 @@ void ElfFile<ElfFileParamNames>::noDefaultLib()
 }
 
 template<ElfFileParams>
+void ElfFile<ElfFileParamNames>::zeroProgbits()
+{
+    for (auto& shdr : shdrs)
+        if (rdi(shdr.sh_type) == SHT_PROGBITS)
+            memset(fileContents->data() + rdi(shdr.sh_offset), 0,
+                   rdi(shdr.sh_size));
+
+    this->rewriteSections();
+    changed = true;
+}
+
+template<ElfFileParams>
 void ElfFile<ElfFileParamNames>::addDebugTag()
 {
     auto shdrDynamic = findSectionHeader(".dynamic");
@@ -2040,6 +2052,7 @@ static std::set<std::string> neededLibsToAdd;
 static std::set<std::string> symbolsToClearVersion;
 static bool printNeeded = false;
 static bool noDefaultLib = false;
+static bool zeroProgbits = false;
 static bool printExecstack = false;
 static bool clearExecstack = false;
 static bool setExecstack = false;
@@ -2096,6 +2109,9 @@ static void patchElf2(ElfFile && elfFile, const FileContents & fileContents, con
 
     if (addDebugTag)
         elfFile.addDebugTag();
+
+    if (zeroProgbits)
+        elfFile.zeroProgbits();
 
     if (elfFile.isChanged()){
         writeFile(fileName, elfFile.fileContents);
@@ -2162,6 +2178,7 @@ static void showHelp(const std::string & progName)
   [--set-execstack]\n\
   [--output FILE]\n\
   [--debug]\n\
+  [--zero-progbits]\t\tClear all progbits sections. Helpful to share tests with sensitive content\n\
   [--version]\n\
   FILENAME...\n", progName.c_str());
 }
@@ -2284,6 +2301,9 @@ static int mainWrapped(int argc, char * * argv)
         }
         else if (arg == "--debug") {
             debugMode = true;
+        }
+        else if (arg == "--zero-progbits") {
+            zeroProgbits = true;
         }
         else if (arg == "--no-default-lib") {
             noDefaultLib = true;

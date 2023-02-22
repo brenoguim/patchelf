@@ -149,6 +149,8 @@ public:
 
     void modifyExecstack(ExecstackMode op);
 
+    void zeroProgbits();
+
 private:
 
     /* Convert an integer in big or little endian representation (as
