@@ -13,6 +13,30 @@ using FileContents = std::shared_ptr<std::vector<unsigned char>>;
 #define ElfFileParams class Elf_Ehdr, class Elf_Phdr, class Elf_Shdr, class Elf_Addr, class Elf_Off, class Elf_Dyn, class Elf_Sym, class Elf_Verneed, class Elf_Versym
 #define ElfFileParamNames Elf_Ehdr, Elf_Phdr, Elf_Shdr, Elf_Addr, Elf_Off, Elf_Dyn, Elf_Sym, Elf_Verneed, Elf_Versym
 
+struct range
+{
+    explicit range(ssize_t s, ssize_t sz = 0)
+        : start(s)
+        , end(s+sz)
+    {
+        assert(sz >= 0);
+    }
+
+    bool within(range r) const
+    {
+        return start >= r.start &&
+               start < r.end &&
+               end < r.end;
+    }
+
+    bool wraps(range r) const
+    {
+        return r.within(*this);
+    }
+
+    ssize_t start, end;
+};
+
 template<ElfFileParams>
 class ElfFile
 {
@@ -175,4 +199,7 @@ private:
     [[nodiscard]] const Elf_Ehdr *hdr() const noexcept {
       return reinterpret_cast<const Elf_Ehdr *>(fileContents->data());
     }
+
+    range offsetRange(const Elf_Shdr& s) const { return range(rdi(s.sh_offset), rdi(s.sh_size)); }
+    range offsetRange(const Elf_Phdr& s) const { return range(rdi(s.p_offset), rdi(s.p_filesz)); }
 };

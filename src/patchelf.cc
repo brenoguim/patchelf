@@ -348,6 +348,20 @@ ElfFile<ElfFileParamNames>::ElfFile(FileContents fContents)
 
     sectionNames = std::string(shstrtab, shstrtabSize);
 
+    for (auto& shdr : shdrs)
+    {
+        auto shRange = offsetRange(shdr);
+
+        int cnt = std::count_if(phdrs.begin(), phdrs.end(),
+            [&] (auto& phdr) {
+                return rdi(phdr.p_type) == PT_LOAD &&
+                       offsetRange(shdr).wraps(shRange);
+            });
+        
+        if (cnt > 1)
+            error(fmt("Section ", getSectionName(shdr), " is loaded by ", cnt, " different segments"));
+    }
+
     sectionsByOldIndex.resize(shdrs.size());
     for (size_t i = 1; i < shdrs.size(); ++i)
         sectionsByOldIndex.at(i) = getSectionName(shdrs.at(i));
